@@ -177,5 +177,3 @@ elif len(df_list) > 1:
         st.plotly_chart(bar_chart_wer, use_container_width=True)
     else:
         st.write("please select only two models for comparison")
-else:
-    st.write("Please select two models for comparison")
