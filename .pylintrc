@@ -1,0 +1,8 @@
+[FORMAT]
+max-line-length=140
+[MESSAGE CONTROL]
+disable=
+    E0401, #import-error
+    C0103, #invalid-name
+    C0209, #consider-using-f-string
+    W0621, #redefined-outer-name

@@ -1,15 +1,67 @@
-import pandas as pd
-import streamlit as st
-import plotly.graph_objects as go
+"""
+This module display the main page with file uploader in sidebar
+and results in center page
+"""
 
-# takes the file and returns the name and data of the files in as dataframe
-def get_formated_file(file):
+from io import BytesIO
+from pathlib import Path
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+from pandas import DataFrame
+
+
+def get_formated_file(file: Path) -> tuple:
+    """
+    takes the file and returns the name and data of the files as dataframe
+
+    Args:
+        file (Path): file path
+
+    Returns:
+        tuple: tuple of name and dataframe
+    """
     name = "_".join((file.name.split("_"))[0:2])
     return (name, pd.read_json(file, lines=True))
 
 
-# returns the color based on the value
-def color_survived(df):
+def convert_to_csv(df: DataFrame) -> str:
+    """
+    converts dataframe to CSV format
+
+    Args:
+        df (DataFrame): pandas dataframe
+
+    Returns:
+        str: csv as string
+    """
+    return df.to_csv(index=False).encode("utf-8")
+
+
+def convert_to_excel(df: DataFrame) -> bytes:
+    """
+    converts dataframe into excel_writer in_memory
+
+    Args:
+        df (DataFrame): pandas dataframe
+
+    Returns:
+        bytes: excel_writer
+    """
+    in_memory_fp = BytesIO()
+    df.to_excel(excel_writer=in_memory_fp, index=False)
+    in_memory_fp.seek(0)
+    return in_memory_fp.read()
+
+
+def color_survived(df: DataFrame):
+    """
+    returns the color based on the value
+
+    Args:
+        df (DataFrame): Pandas DataFrame
+    """
     return (
         ["background-color: rgb(2, 97, 3)"] * len(df)
         if df.per_change_cer > 0
@@ -29,6 +81,7 @@ uploads = st.sidebar.file_uploader(
     type=[".jsonl"],
 )
 # storing file name and data as dataframe inside session_state
+# mypy: disable-error-code="union-attr"
 for file in uploads:
     key, value = get_formated_file(file)
     st.session_state["data"][key] = value
@@ -70,6 +123,17 @@ elif len(df_list) > 1:
         )
         # coloring the rows bases on the cer scores
         st.dataframe(final_dataframe.style.apply(color_survived, axis=1))
+        col1, col2 = st.columns(2)
+        col1.download_button(
+            label="download as csv",
+            data=convert_to_csv(final_dataframe),
+            mime="text/csv",
+        )
+        col2.download_button(
+            label="download as excel",
+            data=convert_to_excel(final_dataframe),
+            mime="application/vnd.ms-excel",
+        )
         st.text("Lower the value better the accuracy of the model")
         # calculating the mean values of cer and wer scores
         mean_cer1 = final_dataframe[final_dataframe.columns[1]].mean()
@@ -79,7 +143,8 @@ elif len(df_list) > 1:
         # comparing the results based on the cer mean value
         st.markdown(
             """
-            <span style="color:green">{}</span> model has <span style="color:green">[{:.4f}]</span> better average CER score than <span style="color:red">{}</span> model <span style="color:red">[{:.4f}]</span>
+            <span style="color:green">{}</span> model has <span style="color:green">[{:.4f}]</span> better average \
+                CER score than <span style="color:red">{}</span> model <span style="color:red">[{:.4f}]</span>
             """.format(
                 selected_options[0] if mean_cer1 <= mean_cer2 else selected_options[1],
                 float(mean_cer1 if mean_cer1 <= mean_cer2 else mean_cer2),
@@ -91,7 +156,8 @@ elif len(df_list) > 1:
         # comparing the results based on the wer mean value
         st.markdown(
             """
-            <span style="color:green">{}</span> model has <span style="color:green">[{:.4f}]</span> better average WER score than <span style="color:red">{}</span> model <span style="color:red">[{:.4f}]</span>
+            <span style="color:green">{}</span> model has <span style="color:green">[{:.4f}]</span>\
+                better average WER score than <span style="color:red">{}</span> model <span style="color:red">[{:.4f}]</span>
             """.format(
                 selected_options[0] if mean_wer1 <= mean_wer2 else selected_options[1],
                 float(mean_wer1 if mean_wer1 <= mean_wer2 else mean_wer2),
